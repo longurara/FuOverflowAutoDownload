@@ -18,7 +18,6 @@
 - Visit any FuOverflow thread with attachment download buttons; the script tags each anchor and sends it to the background worker to download once.
 - Click the first image/attachment; the content script reads Fancybox’s gallery size (via `Fancybox.getInstance().items.length` or `<span data-fancybox-count>`) and auto-presses Next every 0.5 s until it finishes or you press `Esc`. If the counter element is missing, it falls back to your configured limit.
 - Use the extension popup (click the toolbar icon) to choose the fallback total image count. Because the first image is triggered manually, the auto-next counter uses “value − 1”. Example: enter `50` ⇒ the extension presses Next 49 more times.
-- The popup shows the required credit: `github.com/longurara`.
 
 ## Notes
 
