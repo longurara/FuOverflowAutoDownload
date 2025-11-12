@@ -6,7 +6,9 @@
 
   const SELECTOR = 'a.f-button[download][data-fancybox-download][href]';
   const DEFAULT_SETTINGS = {
-    autoAdvanceLimit: 50
+    autoAdvanceLimit: 50,
+    autoDownloadEnabled: true,
+    extensionEnabled: true
   };
   const settings = { ...DEFAULT_SETTINGS };
   const storageArea = chrome.storage?.sync ?? chrome.storage?.local ?? null;
@@ -28,8 +30,18 @@
         return;
       }
 
+      const patch = {};
       if (Object.prototype.hasOwnProperty.call(changes, "autoAdvanceLimit")) {
-        applySettings({ autoAdvanceLimit: changes.autoAdvanceLimit.newValue });
+        patch.autoAdvanceLimit = changes.autoAdvanceLimit.newValue;
+      }
+      if (Object.prototype.hasOwnProperty.call(changes, "autoDownloadEnabled")) {
+        patch.autoDownloadEnabled = changes.autoDownloadEnabled.newValue;
+      }
+      if (Object.prototype.hasOwnProperty.call(changes, "extensionEnabled")) {
+        patch.extensionEnabled = changes.extensionEnabled.newValue;
+      }
+      if (Object.keys(patch).length) {
+        applySettings(patch);
       }
     });
   }
@@ -80,6 +92,10 @@
     }
 
     document.addEventListener("click", (event) => {
+      if (!isExtensionEnabled()) {
+        return;
+      }
+
       const navButton = event.target.closest?.("button[data-carousel-next], button[data-carousel-prev]");
       if (navButton) {
         setTimeout(() => processAnchors(document), 50);
@@ -106,6 +122,10 @@
   };
 
   function processAnchors(root) {
+    if (!isExtensionEnabled() || !isAutoDownloadEnabled()) {
+      return;
+    }
+
     const batch = [];
     root.querySelectorAll?.(SELECTOR).forEach((anchor) => {
       const info = handleAnchor(anchor);
@@ -134,6 +154,14 @@
   }
 
   function sendLinks(links) {
+    if (!isAutoDownloadEnabled()) {
+      return;
+    }
+
+    if (!isExtensionEnabled() || !isAutoDownloadEnabled()) {
+      return;
+    }
+
     chrome.runtime?.sendMessage?.({
       type: "FUO_ATTACHMENT_LINKS",
       links
@@ -173,6 +201,10 @@
   let autoAdvanceRemaining = 0;
 
   function startAutoAdvance() {
+    if (!isExtensionEnabled() || !isAutoDownloadEnabled()) {
+      return;
+    }
+
     const detectedLimit = detectGalleryCount();
     const fallbackLimit = getAutoAdvanceLimit();
     const targetLimit = Number.isFinite(detectedLimit) ? detectedLimit : fallbackLimit;
@@ -262,6 +294,23 @@
 
     const limit = normalizeAutoAdvanceLimit(nextSettings.autoAdvanceLimit);
     settings.autoAdvanceLimit = limit;
+
+    if (typeof nextSettings.autoDownloadEnabled === "boolean") {
+      settings.autoDownloadEnabled = nextSettings.autoDownloadEnabled;
+      if (!settings.autoDownloadEnabled) {
+        stopAutoAdvance();
+      }
+    }
+
+    if (typeof nextSettings.extensionEnabled === "boolean") {
+      const previousState = settings.extensionEnabled;
+      settings.extensionEnabled = nextSettings.extensionEnabled;
+      if (!settings.extensionEnabled) {
+        stopAutoAdvance();
+      } else if (previousState === false && settings.extensionEnabled) {
+        processAnchors(document);
+      }
+    }
   }
 
   function getAutoAdvanceLimit() {
@@ -270,6 +319,14 @@
       return DEFAULT_SETTINGS.autoAdvanceLimit;
     }
     return Math.min(limit, 999);
+  }
+
+  function isExtensionEnabled() {
+    return Boolean(settings.extensionEnabled);
+  }
+
+  function isAutoDownloadEnabled() {
+    return Boolean(settings.extensionEnabled && settings.autoDownloadEnabled);
   }
 
   function normalizeAutoAdvanceLimit(value) {

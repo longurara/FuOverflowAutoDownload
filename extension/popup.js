@@ -1,12 +1,18 @@
 const DEFAULT_SETTINGS = {
-  autoAdvanceLimit: 50
+  autoAdvanceLimit: 50,
+  autoDownloadEnabled: true,
+  extensionEnabled: true
 };
 
 const storageArea = chrome.storage?.sync ?? chrome.storage?.local;
 
 document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("autoAdvanceLimit");
+  const limitInput = document.getElementById("autoAdvanceLimit");
+  const toggleInput = document.getElementById("autoDownloadEnabled");
+  const extensionButton = document.getElementById("extensionToggleBtn");
   const status = document.getElementById("status");
+
+  let extensionEnabled = DEFAULT_SETTINGS.extensionEnabled;
 
   function setStatus(text, error = false) {
     if (!status) return;
@@ -14,38 +20,92 @@ document.addEventListener("DOMContentLoaded", () => {
     status.style.color = error ? "#dc2626" : "#0f766e";
   }
 
+  function syncExtensionState(enabled) {
+    extensionEnabled = Boolean(enabled);
+    if (extensionButton) {
+      extensionButton.textContent = extensionEnabled ? "Disable extension" : "Enable extension";
+      extensionButton.classList.toggle("is-off", !extensionEnabled);
+    }
+
+    const disabled = !extensionEnabled;
+    if (limitInput) {
+      limitInput.disabled = disabled;
+    }
+    if (toggleInput) {
+      toggleInput.disabled = disabled;
+    }
+  }
+
   function load() {
     if (!storageArea) {
-      input.value = DEFAULT_SETTINGS.autoAdvanceLimit;
-      setStatus("Storage unavailable - using default value", true);
+      limitInput.value = DEFAULT_SETTINGS.autoAdvanceLimit;
+      toggleInput.checked = DEFAULT_SETTINGS.autoDownloadEnabled;
+      syncExtensionState(DEFAULT_SETTINGS.extensionEnabled);
+      setStatus("Storage unavailable - using default values", true);
       return;
     }
 
     storageArea.get(DEFAULT_SETTINGS, (items) => {
-      const current = normalizeLimit(items?.autoAdvanceLimit);
-      input.value = current;
+      const currentLimit = normalizeLimit(items?.autoAdvanceLimit);
+      limitInput.value = currentLimit;
+      toggleInput.checked = Boolean(
+        typeof items?.autoDownloadEnabled === "boolean"
+          ? items.autoDownloadEnabled
+          : DEFAULT_SETTINGS.autoDownloadEnabled
+      );
+      const enabled = typeof items?.extensionEnabled === "boolean" ? items.extensionEnabled : DEFAULT_SETTINGS.extensionEnabled;
+      syncExtensionState(enabled);
       setStatus("");
     });
   }
 
-  function save(value) {
+  function saveLimit(value) {
+    persistSettings({ autoAdvanceLimit: normalizeLimit(value) });
+  }
+
+  function saveToggle(enabled) {
+    persistSettings(
+      { autoDownloadEnabled: Boolean(enabled) },
+      enabled ? "Auto download enabled" : "Auto download disabled"
+    );
+  }
+
+  function saveExtensionState(enabled) {
+    persistSettings(
+      { extensionEnabled: Boolean(enabled) },
+      enabled ? "Extension enabled" : "Extension disabled",
+      () => syncExtensionState(enabled)
+    );
+  }
+
+  function persistSettings(patch, successMessage = "Settings saved", onSuccess) {
     if (!storageArea) {
       setStatus("Cannot save - storage not supported", true);
       return;
     }
 
-    const normalized = normalizeLimit(value);
-    storageArea.set({ autoAdvanceLimit: normalized }, () => {
+    storageArea.set(patch, () => {
       if (chrome.runtime.lastError) {
         setStatus("Failed to save settings", true);
         return;
       }
-      setStatus("Settings saved");
+      setStatus(successMessage, false);
+      if (typeof onSuccess === "function") {
+        onSuccess();
+      }
     });
   }
 
-  input.addEventListener("change", (event) => {
-    save(event.target.value);
+  limitInput.addEventListener("change", (event) => {
+    saveLimit(event.target.value);
+  });
+
+  toggleInput.addEventListener("change", (event) => {
+    saveToggle(event.target.checked);
+  });
+
+  extensionButton.addEventListener("click", () => {
+    saveExtensionState(!extensionEnabled);
   });
 
   load();
