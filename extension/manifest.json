@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "FuOverflow Auto Downloader",
+  "description": "Auto-download FuOverflow attachments and images.",
+  "version": "1.0.0",
+  "permissions": ["downloads", "storage"],
+  "host_permissions": ["https://fuoverflow.com/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://fuoverflow.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "FuOverflow Auto Downloader",
+    "default_popup": "popup.html"
+  }
+}

@@ -1,7 +1,5 @@
 # FuOverflow Auto Downloader
 
-Chrome extension that scans FuOverflow threads, collects every `Download` button (e.g. the saved page `(5) De Thi FE - MAD101 - SU25 - FE _ FuOverflow Community.html`), and uses the Downloads API to grab attachments automatically.
-
 ## Folder structure
 
 - `extension/manifest.json` – Manifest V3 config (downloads + storage permissions, FuOverflow host scope, popup registration).
@@ -26,4 +24,4 @@ Chrome extension that scans FuOverflow threads, collects every `Download` button
 
 - Relative attachment paths such as `/attachments/...` are converted to absolute URLs via `window.location.origin`.
 - Filenames are taken from the `download` attribute when possible; otherwise the URL tail is used and sanitized to ASCII-safe characters.
-"# FuOverflowAutoDownload" 
+  "# FuOverflowAutoDownload"
